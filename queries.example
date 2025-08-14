@@ -1,5 +1,108 @@
-# GitHub搜索查询配置文件
-# 每行一个查询语句，支持GitHub搜索语法
-# 以#开头的行为注释，空行会被忽略
+# =================================================================================
+# 🚀 专家级 GitHub 敏感信息搜索配置文件 v4.1 (终极增强版) 🚀
+# 来自 https://linux.do/t/topic/820574/42
+# =================================================================================
+# 核心策略: 分而治之，从广域到精准，结合专题突破，持续迭代。
+# 版本说明: 本版本基于 v4.0，并精准融入了针对 .env 变体和通用配置文件 (config.json/yml)
+#           的查询，进一步增强了在常见开发场景下的密钥发现能力，实现了结构、
+#           火力和精度的再次提升。
+#
+# 查询符号图例:
+# 🎯 高信噪比: 命中率极高，误报少，优先扫描。
+# 💡 创意拓展: 覆盖更广泛的场景，可能带来意外发现。
+# 🔍 上下文关联: 结合特定API、URL或上下文，结果更真实。
+# 🛡️ 防御性: 适合开发者自查项目是否存在硬编码。
+# 🌍 广域搜索: 结果量大，信噪比低，用于初期“捞针”。
+# =================================================================================
 
-AIzaSy in:file
+# --- 策略一：🌍 基础与广域搜索 (Basic & Broad-Spectrum) ---
+# 起点，用于大范围捕捞，结果量大但信噪比低。
+🌍 AIzaSy in:file
+🌍 AIzaSy filename:.env # 广泛搜索所有 .env 文件中的密钥
+💡 AIzaSy filename:.env.example # 寻找错误提交到示例文件中的真实密钥。
+
+# --- 策略二：🎯 精准配置文件搜索 (High-Precision Configs) ---
+# 直接命中配置文件中的密钥赋值语句或特定文件名，这是最常见的泄露形式，效率最高。
+🎯 AIzaSy "API_KEY=" filename:.env
+🎯 AIzaSy "API_KEY =" filename:.env
+🎯 AIzaSy path:.github/workflows extension:yml
+
+# [新增] .env 变体与通用配置文件，精准打击
+🎯 AIzaSy filename:.env.local # 极高风险，本地环境变量不应被提交
+🎯 AIzaSy filename:.env.development # 开发环境的密钥也常常是有效的
+🎯 AIzaSy filename:config extension:json # 精准匹配 config.json
+🎯 AIzaSy filename:config extension:yml # 精准匹配 config.yml
+🎯 AIzaSy filename:config extension:yaml # ...以及 config.yaml
+
+🎯 AIzaSy filename:credentials.json
+🎯 AIzaSy filename:secrets.yml "api_key"
+🎯 AIzaSy filename:secrets.json "api_key"
+🎯 AIzaSy filename:*.p12
+🎯 AIzaSy extension:pem "PRIVATE KEY"
+🎯 AIzaSy filename:terraform.tfvars "api_key"
+🎯 AIzaSy path:"/.vscode" filename:settings.json
+🎯 AIzaSy filename:*.tfstate "access_key"
+
+# --- 策略三：💡 按编程语言/框架深化 (Language & Framework Deep Dive) ---
+# 深入代码和框架特定文件，寻找硬编码的密钥。
+🛡️ AIzaSy language:python "API_KEY =" OR "API_KEY':"
+🛡️ AIzaSy language:javascript "apiKey:" OR "apiKey ="
+🛡️ AIzaSy language:go "apiKey :=" OR "ApiKey ="
+🛡️ AIzaSy language:ruby "API_KEY =>"
+🛡️ AIzaSy language:java "final String API_KEY = \"AIzaSy"
+💡 AIzaSy extension:ipynb "api_key" "AIzaSy" # Jupyter Notebooks 是泄露重灾区
+🛡️ AIzaSy language:php "define('API_KEY'"
+🛡️ AIzaSy language:swift "let apiKey = \"AIzaSy"
+💡 AIzaSy filename:wp-config.php "AUTH_KEY" # WordPress 配置文件，高价值目标
+
+# --- 策略四：🔍 按上下文和路径关联 (Context & Path Correlation) ---
+# 结合特定API端点、URL或特征路径，极大提高有效性。
+🔍 AIzaSy "maps.googleapis.com/maps/api"
+🔍 AIzaSy "fcm.googleapis.com/fcm/send"
+🔍 AIzaSy "generativelanguage.googleapis.com" # 新版 Gemini API 端点，精准！
+🔍 AIzaSy path:config extension:json # 搜索名为 "config" 目录下的所有json文件
+🔍 AIzaSy path:deploy
+🔍 AIzaSy path:/.aws/
+🔍 AIzaSy path:/.gcp/
+🔍 AIzaSy filename:"docker-compose.yml" "GOOGLE_API_KEY"
+
+# --- 策略五：🧠 高级组合与排除法 (Advanced Logic & Exclusions) ---
+# 运用逻辑组合，并排除模板、示例等常见干扰项。
+🎯 AIzaSy "Authorization: Bearer AIzaSy"
+🎯 AIzaSy "x-api-key: AIzaSy"
+💡 AIzaSy "google-services.json" in:file NOT path:app/src/debug # 排除安卓Debug路径
+💡 AIzaSy extension:sh "export GOOGLE_API_KEY="
+💡 AIzaSy extension:json "api_key" NOT "example" NOT "YOUR_API_KEY" NOT "placeholder"
+💡 AIzaSy extension:diff "+*API_KEY*AIzaSy" # 在代码变更(diff/patch)中寻找新增的密钥
+
+# --- 策略六：🎯 专题搜索：Google Gemini & Generative AI (专项打击) ---
+# ★★★ 汇集所有 Gemini 核心查询，形成重点突破。无冗余，高聚焦 ★★★
+🔍 "google.generativeai" "AIzaSy" language:python # 结合官方库导入和密钥，精准度极高！
+🔍 AIzaSy "generativemodel" # 搜索与生成模型API调用相关的密钥。
+🎯 AIzaSy "gemini" filename:.env # 在 .env 文件中明确查找与gemini相关的密钥。
+🎯 "GEMINI_API_KEY" "AIzaSy" # 寻找明确命名的Gemini API密钥。
+🎯 "GOOGLE_API_KEY" "gemini" "AIzaSy" # 寻找在gemini上下文中使用的Google API Key。
+💡 AIzaSy "gemini" extension:ipynb # 在Jupyter Notebooks中寻找与gemini相关的密钥 (非常有效)。
+💡 AIzaSy "gemini" filename:config.json
+💡 AIzaSy "gemini" filename:secrets.toml
+💡 AIzaSy "gemini" extension:yaml # 覆盖所有 .yaml/.yml 文件
+
+# --- 策略七：🕵️‍♂️ 剑走偏锋 (Unconventional & Creative) ---
+# 覆盖一些容易被忽视的角落。
+💡 AIzaSy gist # 在公开的 Gist 代码片段中搜索
+💡 AIzaSy in:file:.bash_history # Shell历史记录
+💡 AIzaSy in:file:.zsh_history
+💡 AIzaSy extension:log "status=401" "key=AIzaSy" # 错误日志中可能包含请求参数
+💡 AIzaSy "removed api key" in:commit # 搜索commit信息，密钥可能留在历史记录中
+💡 AIzaSy filename:"package.json" "proxy" "key=AIzaSy" # 代理设置中的密钥
+💡 AIzaSy filename:*.sql "INSERT INTO" "AIzaSy" # 数据库备份文件
+
+
+# =================================================================================
+# 迭代提示 (Pro Tips):
+# 1. 优先级顺序: 建议从 `🎯` (高信噪比) 和 `🔍` (上下文关联) 的查询开始，效率最高。
+#    `🌍` (广域搜索) 放在最后，或在没有找到结果时使用。
+# 2. 专题驱动: 像已有的 "Gemini" 专题一样，当你关注一个新的API或框架时，
+#    为其创建专属的专题搜索策略，例如 "OpenAI"、"Stripe" 等。
+# 3. 攻防一体: 作为开发者，定期用这些脚本扫描自己的公开仓库，防止无意间泄露。
+# =================================================================================
