@@ -1,0 +1,98 @@
+name: Hajimi King Auto Run
+
+on:
+  schedule:
+    # 每周运行一次 (UTC时间)
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+    # 手动触发
+  push:
+    branches: [ main ]
+    paths:
+      - 'app/**'
+      - 'common/**'
+      - 'utils/**'
+      - '.github/workflows/**'
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  run-hajimi-king:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+        
+    - name: Install dependencies
+      run: |
+        uv pip install --system -r pyproject.toml
+        
+    - name: Create required directories
+      run: |
+        mkdir -p data/keys
+        mkdir -p data/logs
+        
+    - name: Setup configuration
+      run: |
+        cp queries.example queries.txt
+        
+    - name: Run Hajimi King
+      timeout-minutes: 240  # 4小时超时
+      env:
+        # 必填配置
+        GITHUB_TOKENS: ${{ secrets.TOKENS }}
+        
+        # 基础配置
+        DATA_PATH: ./data
+        QUERIES_FILE: queries.txt
+        HAJIMI_CHECK_MODEL: ${{ vars.HAJIMI_CHECK_MODEL || 'gemini-2.5-flash' }}
+        DATE_RANGE_DAYS: ${{ vars.DATE_RANGE_DAYS || '180' }}
+        
+        # 代理配置
+        # PROXY: ${{ secrets.PROXY }}
+        
+        # 文件前缀配置
+        VALID_KEY_PREFIX: ${{ vars.VALID_KEY_PREFIX || 'keys/keys_valid_' }}
+        RATE_LIMITED_KEY_PREFIX: ${{ vars.RATE_LIMITED_KEY_PREFIX || 'keys/key_429_' }}
+        KEYS_SEND_PREFIX: ${{ vars.KEYS_SEND_PREFIX || 'keys/keys_send_' }}
+        VALID_KEY_DETAIL_PREFIX: ${{ vars.VALID_KEY_DETAIL_PREFIX || 'logs/keys_valid_detail_' }}
+        RATE_LIMITED_KEY_DETAIL_PREFIX: ${{ vars.RATE_LIMITED_KEY_DETAIL_PREFIX || 'logs/key_429_detail_' }}
+        KEYS_SEND_DETAIL_PREFIX: ${{ vars.KEYS_SEND_DETAIL_PREFIX || 'logs/keys_send_detail_' }}
+        
+        # Gemini Balancer同步配置
+        GEMINI_BALANCER_SYNC_ENABLED: ${{ secrets.GEMINI_BALANCER_SYNC_ENABLED || 'false' }}
+        GEMINI_BALANCER_URL: ${{ secrets.GEMINI_BALANCER_URL }}
+        GEMINI_BALANCER_AUTH: ${{ secrets.GEMINI_BALANCER_AUTH }}
+        
+        # GPT Load同步配置
+        GPT_LOAD_SYNC_ENABLED: ${{ secrets.GPT_LOAD_SYNC_ENABLED || 'false' }}
+        GPT_LOAD_URL: ${{ secrets.GPT_LOAD_URL }}
+        GPT_LOAD_AUTH: ${{ secrets.GPT_LOAD_AUTH }}
+        GPT_LOAD_GROUP_NAME: ${{ secrets.GPT_LOAD_GROUP_NAME }}
+        
+        # 文件路径黑名单
+        FILE_PATH_BLACKLIST: ${{ vars.FILE_PATH_BLACKLIST || 'readme,docs,doc/,.md,example,sample,tutorial,test,spec,demo,mock' }}
+        
+        # Python路径配置
+        PYTHONPATH: ${{ github.workspace }}
+      run: |
+        echo "开始运行 Hajimi King..."
+        cd ${{ github.workspace }}
+        python app/hajimi_king.py
+
+    - name: End
+      if: always()
+      run: |
+        echo "=== 运行结束 ==="
